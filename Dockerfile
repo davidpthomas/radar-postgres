@@ -16,10 +16,17 @@ RUN echo "deb http://apt.postgresql.org/pub/repos/apt/ precise-pgdg main" > /etc
 RUN apt-get update && apt-get -y -q install python-software-properties software-properties-common \
     && apt-get -y -q install postgresql-9.4 postgresql-client-9.4 postgresql-contrib-9.4
 
+RUN apt-get install -y vim
+
 USER postgres
 
 RUN /etc/init.d/postgresql start \
-    && psql --command "CREATE USER radar_webapp WITH CREATEDB PASSWORD 'radar_webapp';"
+ && psql --command "CREATE USER \"radar_webapp-dev\" PASSWORD 'radar_webapp-dev';" \
+ && psql --command "CREATE DATABASE \"radar-webapp_development\" OWNER \"radar_webapp-dev\";" \
+ && psql --command "CREATE DATABASE \"radar-webapp_test\" OWNER \"radar_webapp-dev\";" \
+ && psql --command "CREATE DATABASE \"radar-webapp_staging\" OWNER \"radar_webapp-dev\";" \
+ && psql --command "CREATE USER \"radar_webapp-prod\"" \
+ && psql --command "CREATE DATABASE \"radar-webapp_production\" OWNER \"radar_webapp-prod\";"
 
 USER root
 
@@ -39,6 +46,12 @@ RUN mkdir -p /var/run/postgresql && chown -R postgres /var/run/postgresql
 VOLUME  ["/etc/postgresql", "/var/log/postgresql", "/var/lib/postgresql"]
 
 USER postgres
+
+ENV PG_HOME /var/lib/postgresql
+
+ADD vimrc $PG_HOME/.vimrc
+ADD inputrc $PG_HOME/.inputrc
+ADD bashrc $PG_HOME/.bashrc
 
 # Set the default command to run when starting the container
 CMD ["/usr/lib/postgresql/9.4/bin/postgres", "-D", "/var/lib/postgresql/9.4/main", "-c", "config_file=/etc/postgresql/9.4/main/postgresql.conf"]
