@@ -21,12 +21,25 @@ RUN apt-get install -y vim
 USER postgres
 
 RUN /etc/init.d/postgresql start \
- && psql --command "CREATE USER \"radar_webapp-dev\" PASSWORD 'radar_webapp-dev';" \
+ # create Roles for dev & prod
+ && psql --command "CREATE USER \"radar_webapp-dev\" WITH CREATEDB PASSWORD 'radar_webapp-dev';" \
+ && psql --command "CREATE USER \"radar_webapp-prod\"" \
+ # create databases (dev/test/staging/prod)
  && psql --command "CREATE DATABASE \"radar-webapp_development\" OWNER \"radar_webapp-dev\";" \
  && psql --command "CREATE DATABASE \"radar-webapp_test\" OWNER \"radar_webapp-dev\";" \
  && psql --command "CREATE DATABASE \"radar-webapp_staging\" OWNER \"radar_webapp-dev\";" \
- && psql --command "CREATE USER \"radar_webapp-prod\"" \
- && psql --command "CREATE DATABASE \"radar-webapp_production\" OWNER \"radar_webapp-prod\";"
+ && psql --command "CREATE DATABASE \"radar-webapp_production\" OWNER \"radar_webapp-prod\";" \
+ # setup permissions; revoke all then enable individual role <-> database access
+ && psql --command "REVOKE CONNECT ON DATABASE \"radar-webapp_development\" FROM PUBLIC;" \
+ && psql --command "REVOKE CONNECT ON DATABASE \"radar-webapp_test\" FROM PUBLIC;" \
+ && psql --command "REVOKE CONNECT ON DATABASE \"radar-webapp_staging\" FROM PUBLIC;" \
+ && psql --command "REVOKE CONNECT ON DATABASE \"radar-webapp_production\" FROM PUBLIC;" \
+ && psql --command "GRANT CONNECT ON DATABASE \"radar-webapp_development\" TO \"radar_webapp-dev\";" \
+ && psql --command "GRANT CONNECT ON DATABASE \"radar-webapp_test\" TO \"radar_webapp-dev\";" \
+ && psql --command "GRANT CONNECT ON DATABASE \"radar-webapp_staging\" TO \"radar_webapp-dev\";" \
+ && psql --command "GRANT CONNECT ON DATABASE \"radar-webapp_production\" TO \"radar_webapp-prod\";" \
+ # enable dev user to create/destroy db's as part of rails' db lifecycle (e.g. testing)
+ && psql --command "ALTER ROLE \"radar_webapp-dev\" SUPERUSER;"
 
 USER root
 
